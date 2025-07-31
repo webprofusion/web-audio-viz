@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Audio Visualizer - Winamp Style</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>🎵 Audio Visualizer</h1>
+            <div class="info">Drop an audio file or click to select</div>
+        </header>
+
+        <div class="drop-zone" id="dropZone">
+            <div class="drop-content">
+                <div class="drop-icon">🎵</div>
+                <div class="drop-text">
+                    <p>Drag & Drop audio files here</p>
+                    <p>or</p>
+                    <button class="select-file-btn" id="selectFileBtn">Select Files</button>
+                </div>
+            </div>
+            <input type="file" id="fileInput" accept="audio/*" multiple style="display: none;">
+        </div>
+
+        <div class="player-controls" id="playerControls" style="display: none;">
+            <div class="track-info">
+                <div class="track-name" id="trackName">No track selected</div>
+                <div class="track-time">
+                    <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+                </div>
+            </div>
+            
+            <div class="controls">
+                <button class="control-btn" id="prevBtn">⏮️</button>
+                <button class="control-btn play-pause" id="playPauseBtn">▶️</button>
+                <button class="control-btn" id="nextBtn">⏭️</button>
+                <button class="control-btn" id="stopBtn">⏹️</button>
+            </div>
+
+            <div class="progress-container">
+                <input type="range" class="progress-bar" id="progressBar" min="0" max="100" value="0">
+            </div>
+
+            <div class="volume-container">
+                <span>🔊</span>
+                <input type="range" class="volume-bar" id="volumeBar" min="0" max="100" value="80">
+            </div>
+        </div>
+
+        <div class="visualizer-container">
+            <div class="visualizer-header">
+                <button class="fullscreen-btn" id="fullscreenBtn">🔲 Fullscreen</button>
+            </div>
+            <canvas id="visualizer"></canvas>
+            <div class="visualizer-controls">
+                <label>
+                    Visualization:
+                    <select id="vizType">
+                        <option value="bars">Frequency Bars</option>
+                        <option value="wave">Waveform</option>
+                        <option value="circle">Circular</option>
+                        <option value="spiral">Spiral</option>
+                        <option value="particles">Particles</option>
+                    </select>
+                </label>
+                <label>
+                    <input type="checkbox" id="showParticles" checked> Particles
+                </label>
+                <label>
+                    Sensitivity:
+                    <input type="range" id="sensitivity" min="0.1" max="3" step="0.1" value="1">
+                </label>
+            </div>
+        </div>
+
+        <!-- Fullscreen Visualizer -->
+        <div class="fullscreen-visualizer" id="fullscreenVisualizer" style="display: none;">
+            <canvas id="fullscreenCanvas"></canvas>
+            <div class="fullscreen-controls">
+                <button class="exit-fullscreen-btn" id="exitFullscreenBtn">✕ Exit Fullscreen</button>
+                <div class="fullscreen-viz-controls">
+                    <select id="fullscreenVizType">
+                        <option value="bars">Frequency Bars</option>
+                        <option value="wave">Waveform</option>
+                        <option value="circle">Circular</option>
+                        <option value="spiral">Spiral</option>
+                        <option value="particles">Particles</option>
+                    </select>
+                    <label>
+                        <input type="checkbox" id="fullscreenShowParticles" checked> Particles
+                    </label>
+                    <input type="range" id="fullscreenSensitivity" min="0.1" max="3" step="0.1" value="1" title="Sensitivity">
+                </div>
+            </div>
+        </div>
+
+        <div class="playlist" id="playlist" style="display: none;">
+            <h3>Playlist</h3>
+            <div class="playlist-items" id="playlistItems"></div>
+        </div>
+    </div>
+
+    <audio id="audioElement" crossorigin="anonymous"></audio>
+    <script src="script.js"></script>
+</body>
+</html>
