@@ -60,6 +60,13 @@ class AudioVisualizer {
     this.randomizeModeBtn = document.getElementById('randomizeModeBtn');
     this.fullscreenResetDefaultsBtn = document.getElementById('fullscreenResetDefaultsBtn');
     this.fullscreenRandomizeModeBtn = document.getElementById('fullscreenRandomizeModeBtn');
+    // Auto cycle controls
+    this.autoCycleCheckbox = document.getElementById('autoCycle');
+    this.autoCycleIntervalInput = document.getElementById('autoCycleInterval');
+    this.fullscreenAutoCycleCheckbox = document.getElementById('fullscreenAutoCycle');
+    this.fullscreenAutoCycleIntervalInput = document.getElementById('fullscreenAutoCycleInterval');
+    this.autoCycleTimer = null;
+    this.autoCycleSeconds = 10;
     }
 
     setupEventListeners() {
@@ -109,6 +116,22 @@ class AudioVisualizer {
             this.setRandomMode();
         });
 
+        // Auto cycle main
+        this.autoCycleCheckbox.addEventListener('change', (e) => {
+            this.fullscreenAutoCycleCheckbox.checked = e.target.checked;
+            if (e.target.checked) {
+                this.startAutoCycle();
+            } else {
+                this.stopAutoCycle();
+            }
+        });
+        this.autoCycleIntervalInput.addEventListener('input', (e) => {
+            const v = Math.max(2, Math.min(60, parseInt(e.target.value || '10', 10)));
+            this.autoCycleSeconds = v;
+            this.fullscreenAutoCycleIntervalInput.value = String(v);
+            if (this.autoCycleTimer) this.restartAutoCycle();
+        });
+
         // Fullscreen controls
         this.fullscreenBtn.addEventListener('click', this.enterFullscreen.bind(this));
         this.exitFullscreenBtn.addEventListener('click', this.exitFullscreen.bind(this));
@@ -135,6 +158,22 @@ class AudioVisualizer {
         });
         this.fullscreenRandomizeModeBtn.addEventListener('click', () => {
             this.setRandomMode();
+        });
+
+        // Auto cycle fullscreen
+        this.fullscreenAutoCycleCheckbox.addEventListener('change', (e) => {
+            this.autoCycleCheckbox.checked = e.target.checked;
+            if (e.target.checked) {
+                this.startAutoCycle();
+            } else {
+                this.stopAutoCycle();
+            }
+        });
+        this.fullscreenAutoCycleIntervalInput.addEventListener('input', (e) => {
+            const v = Math.max(2, Math.min(60, parseInt(e.target.value || '10', 10)));
+            this.autoCycleSeconds = v;
+            this.autoCycleIntervalInput.value = String(v);
+            if (this.autoCycleTimer) this.restartAutoCycle();
         });
 
         // Keyboard shortcuts for fullscreen
@@ -511,6 +550,12 @@ class AudioVisualizer {
         if (this.fullscreenSensitivity) this.fullscreenSensitivity.value = String(this.sensitivity);
         if (this.vizTypeSelect) this.vizTypeSelect.value = this.vizType;
         if (this.fullscreenVizType) this.fullscreenVizType.value = this.vizType;
+        if (this.autoCycleIntervalInput) this.autoCycleIntervalInput.value = String(this.autoCycleSeconds);
+        if (this.fullscreenAutoCycleIntervalInput) this.fullscreenAutoCycleIntervalInput.value = String(this.autoCycleSeconds);
+        if (this.autoCycleCheckbox && this.fullscreenAutoCycleCheckbox) {
+            this.autoCycleCheckbox.checked = !!this.autoCycleTimer;
+            this.fullscreenAutoCycleCheckbox.checked = !!this.autoCycleTimer;
+        }
     }
 
     setRandomMode() {
@@ -524,6 +569,28 @@ class AudioVisualizer {
         this.vizType = next;
         this.applyVizDefaults();
         this.syncUiControls();
+    }
+
+    startAutoCycle() {
+        this.stopAutoCycle();
+        this.autoCycleTimer = setInterval(() => {
+            this.setRandomMode();
+        }, this.autoCycleSeconds * 1000);
+        this.syncUiControls();
+    }
+
+    stopAutoCycle() {
+        if (this.autoCycleTimer) {
+            clearInterval(this.autoCycleTimer);
+            this.autoCycleTimer = null;
+        }
+        this.syncUiControls();
+    }
+
+    restartAutoCycle() {
+        if (this.autoCycleTimer) {
+            this.startAutoCycle();
+        }
     }
 
     clearCanvas(ctx, canvas) {
