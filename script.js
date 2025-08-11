@@ -7,6 +7,21 @@ class AudioVisualizer {
         this.ctx = this.canvas.getContext('2d');
         this.fullscreenCanvas = document.getElementById('fullscreenCanvas');
         this.fullscreenCtx = this.fullscreenCanvas.getContext('2d');
+    // WebGPU: optional GPU canvases
+    this.webgpuCanvas = document.getElementById('webgpuCanvas');
+    this.fullscreenWebgpuCanvas = document.getElementById('fullscreenWebgpuCanvas');
+    this.gpu = null;
+    this.gpuAdapter = null;
+    this.gpuDevice = null;
+    this.gpuContext = null; // main
+    this.gpuFsContext = null; // fullscreen
+    this.gpuFormat = null;
+    this.gpuPipeline = null;
+    this.gpuUniformBuffer = null;
+    this.gpuBindGroup = null;
+    this.gpuFsPipeline = null;
+    this.gpuFsUniformBuffer = null;
+    this.gpuFsBindGroup = null;
         this.isPlaying = false;
         this.currentTrackIndex = 0;
         this.playlist = [];
@@ -16,7 +31,7 @@ class AudioVisualizer {
     this.spectrogramOffset = 0; // for spectrogram vertical scrolling
         
         // Visualization settings
-        this.vizType = 'bars';
+    this.vizType = 'bars';
         this.showParticles = true;
         this.sensitivity = 1;
         
@@ -28,6 +43,8 @@ class AudioVisualizer {
     this.syncUiControls();
     // Spectrogram rendering settings
     this.spectrogramRowHeight = 2;
+    // WebGPU sizing cache
+    this._gpuSized = false;
     }
 
     initializeElements() {
@@ -51,7 +68,7 @@ class AudioVisualizer {
         this.sensitivitySlider = document.getElementById('sensitivity');
         
         // Fullscreen elements
-        this.fullscreenBtn = document.getElementById('fullscreenBtn');
+    this.fullscreenBtn = document.getElementById('fullscreenBtn');
         this.fullscreenVisualizer = document.getElementById('fullscreenVisualizer');
         this.exitFullscreenBtn = document.getElementById('exitFullscreenBtn');
         this.fullscreenVizType = document.getElementById('fullscreenVizType');
@@ -74,7 +91,7 @@ class AudioVisualizer {
     // Cycle order and filters
     this.cycleModeSelect = document.getElementById('cycleMode');
     this.fullscreenCycleModeSelect = document.getElementById('fullscreenCycleMode');
-    this.availableModes = ['bars','wave','circle','spiral','particles','dualBars','radialBars','spectrogram','lissajous','tunnel'];
+    this.availableModes = ['bars','wave','circle','spiral','particles','dualBars','radialBars','spectrogram','lissajous','tunnel','webgpu'];
     this.modeFilter = new Set(this.availableModes); // included modes
     // checkbox elements map
     this.modeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`modeFilter-${id}`)).filter(Boolean);
@@ -109,6 +126,7 @@ class AudioVisualizer {
             this.fullscreenVizType.value = e.target.value;
             this.applyVizDefaults();
             this.syncUiControls();
+            this.toggleWebGPUVisibility();
         });
         this.showParticlesCheckbox.addEventListener('change', (e) => {
             this.showParticles = e.target.checked;
@@ -171,6 +189,7 @@ class AudioVisualizer {
             this.vizTypeSelect.value = e.target.value;
             this.applyVizDefaults();
             this.syncUiControls();
+            this.toggleWebGPUVisibility();
         });
         this.fullscreenShowParticles.addEventListener('change', (e) => {
             this.showParticles = e.target.checked;
@@ -239,6 +258,14 @@ class AudioVisualizer {
         window.addEventListener('resize', this.setupCanvas.bind(this));
     }
 
+    toggleWebGPUVisibility() {
+        const isGpu = this.vizType === 'webgpu';
+        if (this.webgpuCanvas) this.webgpuCanvas.style.display = isGpu ? '' : 'none';
+        if (this.canvas) this.canvas.style.display = isGpu ? 'none' : '';
+        if (this.fullscreenWebgpuCanvas) this.fullscreenWebgpuCanvas.style.display = (isGpu && this.isFullscreen) ? '' : 'none';
+        if (this.fullscreenCanvas) this.fullscreenCanvas.style.display = (isGpu && this.isFullscreen) ? 'none' : '';
+    }
+
     setModeFilterAll(enabled) {
         this.modeFilter = new Set(enabled ? this.availableModes : []);
         // update checkboxes both UIs
@@ -295,12 +322,27 @@ class AudioVisualizer {
         // Setup fullscreen canvas
         this.fullscreenCanvas.width = window.innerWidth;
         this.fullscreenCanvas.height = window.innerHeight;
+
+        // Size GPU canvases similarly
+        if (this.webgpuCanvas) {
+            this.webgpuCanvas.width = rect.width;
+            this.webgpuCanvas.height = rect.height;
+        }
+        if (this.fullscreenWebgpuCanvas) {
+            this.fullscreenWebgpuCanvas.width = window.innerWidth;
+            this.fullscreenWebgpuCanvas.height = window.innerHeight;
+        }
+        // If WebGPU initialized, reconfigure contexts to new size
+        if (this.gpuDevice) {
+            this.configureGpuContexts();
+        }
     }
 
     enterFullscreen() {
         this.isFullscreen = true;
         this.fullscreenVisualizer.style.display = 'block';
         this.setupCanvas();
+    this.toggleWebGPUVisibility();
         
         // Sync control values
         this.fullscreenVizType.value = this.vizType;
@@ -321,6 +363,7 @@ class AudioVisualizer {
         this.isFullscreen = false;
         this.fullscreenVisualizer.style.display = 'none';
         this.setupCanvas();
+                this.toggleWebGPUVisibility();
         
         // Exit browser fullscreen if active
         if (document.exitFullscreen) {
@@ -331,6 +374,135 @@ class AudioVisualizer {
             document.msExitFullscreen();
         }
     }
+
+        async ensureWebGPU() {
+                if (this.gpuDevice) return true;
+                try {
+                        if (!('gpu' in navigator)) return false;
+                        this.gpu = navigator.gpu;
+                        this.gpuAdapter = await this.gpu.requestAdapter();
+                        if (!this.gpuAdapter) return false;
+                        this.gpuDevice = await this.gpuAdapter.requestDevice();
+                        this.gpuFormat = this.gpu.getPreferredCanvasFormat();
+                        this.configureGpuContexts();
+                        await this.createGpuPipelines();
+                        return true;
+                } catch {
+                        return false;
+                }
+        }
+
+        configureGpuContexts() {
+                if (this.webgpuCanvas && !this.gpuContext) {
+                        this.gpuContext = this.webgpuCanvas.getContext('webgpu');
+                }
+                if (this.gpuContext) {
+                        this.gpuContext.configure({ device: this.gpuDevice, format: this.gpuFormat, alphaMode: 'premultiplied' });
+                }
+                if (this.fullscreenWebgpuCanvas && !this.gpuFsContext) {
+                        this.gpuFsContext = this.fullscreenWebgpuCanvas.getContext('webgpu');
+                }
+                if (this.gpuFsContext) {
+                        this.gpuFsContext.configure({ device: this.gpuDevice, format: this.gpuFormat, alphaMode: 'premultiplied' });
+                }
+        }
+
+        async createGpuPipelines() {
+                        const wgsl2 = `
+        struct Uniforms { time:f32, amp:f32, aspect:f32, pad:f32 };
+        @group(0) @binding(0) var<uniform> u:Uniforms;
+
+        struct VSOut { @builtin(position) pos: vec4f, @location(0) uv: vec2f };
+
+        @vertex fn vs(@builtin(vertex_index) vid:u32) -> VSOut {
+            var positions = array<vec2f,6>(
+                vec2f(-1.0,-1.0), vec2f(1.0,-1.0), vec2f(-1.0,1.0),
+                vec2f(-1.0,1.0), vec2f(1.0,-1.0), vec2f(1.0,1.0)
+            );
+            let p = positions[vid];
+            var out: VSOut;
+            out.pos = vec4f(p,0.0,1.0);
+            out.uv = p; // clip-space -1..1
+            return out;
+        }
+
+        fn neonColor(t:f32)->vec3f{
+            let r = 0.5 + 0.5 * sin(6.28318*(t));
+            let g = 0.5 + 0.5 * sin(6.28318*(t)+2.094);
+            let b = 0.5 + 0.5 * sin(6.28318*(t)+4.188);
+            return vec3f(r,g,b);
+        }
+
+        @fragment fn fs(@location(0) uvIn:vec2f)->@location(0) vec4f{
+            var uv = uvIn;
+            uv.x *= u.aspect;
+            let r = length(uv);
+            let k = 10.0 + u.amp * 30.0;
+            let waves = sin(k * r - u.time*2.0);
+            let glow = exp(-8.0 * abs(waves));
+            let hue = fract(r * 0.75 + u.time * 0.05);
+            let col = neonColor(hue) * (0.3 + 0.7 * glow);
+            return vec4f(col,1.0);
+        }
+        `;
+
+                const module = this.gpuDevice.createShaderModule({ code: wgsl2 });
+                const pipelineDesc = {
+                        layout: 'auto',
+                        vertex: { module, entryPoint: 'vs' },
+                        fragment: { module, entryPoint: 'fs', targets: [{ format: this.gpuFormat }] },
+                        primitive: { topology: 'triangle-list' }
+                };
+                this.gpuPipeline = this.gpuDevice.createRenderPipeline(pipelineDesc);
+                this.gpuFsPipeline = this.gpuPipeline; // same pipeline OK for both
+
+                // Create uniforms buffer and bind group (shared shape)
+                const uSize = 16; // 4 f32
+                this.gpuUniformBuffer = this.gpuDevice.createBuffer({ size: uSize, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+                this.gpuBindGroup = this.gpuDevice.createBindGroup({ layout: this.gpuPipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: this.gpuUniformBuffer } }] });
+                this.gpuFsUniformBuffer = this.gpuDevice.createBuffer({ size: uSize, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
+                this.gpuFsBindGroup = this.gpuDevice.createBindGroup({ layout: this.gpuPipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: this.gpuFsUniformBuffer } }] });
+        }
+
+        drawWebGPU(currentCtxIsFullscreen) {
+                if (!this.gpuDevice) return;
+                const t = performance.now() * 0.001;
+                // Estimate amplitude from analyser
+                let amp = 0.0;
+                if (this.analyser) {
+                        const n = this.analyser.frequencyBinCount;
+                        const arr = new Uint8Array(n);
+                        this.analyser.getByteFrequencyData(arr);
+                        let sum = 0;
+                        for (let i=0;i<n;i++) sum += arr[i];
+                        amp = (sum / (n*255)) * this.sensitivity;
+                }
+                if (currentCtxIsFullscreen) {
+                        const aspect = this.fullscreenWebgpuCanvas.width / Math.max(1, this.fullscreenWebgpuCanvas.height);
+                        const data = new Float32Array([t, amp, aspect, 0]);
+                        this.gpuDevice.queue.writeBuffer(this.gpuFsUniformBuffer, 0, data.buffer);
+                        const encoder = this.gpuDevice.createCommandEncoder();
+                        const view = this.gpuFsContext.getCurrentTexture().createView();
+                        const pass = encoder.beginRenderPass({ colorAttachments: [{ view, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }] });
+                        pass.setPipeline(this.gpuFsPipeline);
+                        pass.setBindGroup(0, this.gpuFsBindGroup);
+                        pass.draw(6);
+                        pass.end();
+                        this.gpuDevice.queue.submit([encoder.finish()]);
+                } else {
+                        const aspect = this.webgpuCanvas.width / Math.max(1, this.webgpuCanvas.height);
+                        const data = new Float32Array([t, amp, aspect, 0]);
+                        this.gpuDevice.queue.writeBuffer(this.gpuUniformBuffer, 0, data.buffer);
+                        const encoder = this.gpuDevice.createCommandEncoder();
+                        const view = this.gpuContext.getCurrentTexture().createView();
+                        const pass = encoder.beginRenderPass({ colorAttachments: [{ view, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 1 } }] });
+                        pass.setPipeline(this.gpuPipeline);
+                        pass.setBindGroup(0, this.gpuBindGroup);
+                        pass.draw(6);
+                        pass.end();
+                        this.gpuDevice.queue.submit([encoder.finish()]);
+                }
+        }
 
     initializeParticles() {
         this.particles = [];
@@ -595,6 +767,10 @@ class AudioVisualizer {
             case 'tunnel':
                 this.drawTunnel(dataArray, currentCtx, currentCanvas);
                 break;
+            case 'webgpu':
+                // Ensure WebGPU is ready then render
+                this.drawWebGPU(this.isFullscreen);
+                break;
         }
         
         if (this.showParticles && this.vizType !== 'particles') {
@@ -631,6 +807,18 @@ class AudioVisualizer {
                 fft = 256; smooth = 0.7; sens = 1.3; particles = true; break;
             case 'particles':
                 fft = 256; smooth = 0.65; sens = 1.1; particles = true; break;
+            case 'webgpu':
+                fft = 512; smooth = 0.8; sens = 1.1; particles = false; 
+                // Lazy-init WebGPU and fallback to bars if unsupported
+                this.ensureWebGPU().then((ok)=>{ 
+                    if (!ok) { 
+                        this.vizType = 'bars'; 
+                        this.toggleWebGPUVisibility();
+                        this.applyVizDefaults();
+                        this.syncUiControls();
+                    }
+                });
+                break;
         }
 
         // Apply analyser settings if available
@@ -677,6 +865,7 @@ class AudioVisualizer {
                 cb.checked = this.modeFilter.has(id);
             });
         }
+    this.toggleWebGPUVisibility();
     }
 
     setRandomMode() {

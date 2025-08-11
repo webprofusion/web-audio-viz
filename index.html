@@ -57,6 +57,8 @@
                 <button class="fullscreen-btn" id="fullscreenBtn">🔲 Fullscreen</button>
             </div>
             <canvas id="visualizer"></canvas>
+            <!-- WebGPU canvas overlay (shown only in WebGPU mode) -->
+            <canvas id="webgpuCanvas" style="display:none;"></canvas>
             <div class="visualizer-controls">
                 <label>
                     Visualization:
@@ -71,6 +73,7 @@
                         <option value="spectrogram">Spectrogram</option>
                         <option value="lissajous">Lissajous</option>
                         <option value="tunnel">Tunnel Grid</option>
+                        <option value="webgpu">WebGPU Neon Ring</option>
                     </select>
                 </label>
                 <label>
@@ -108,6 +111,7 @@
                         <label><input type="checkbox" id="modeFilter-spectrogram" checked> Spectrogram</label>
                         <label><input type="checkbox" id="modeFilter-lissajous" checked> Lissajous</label>
                         <label><input type="checkbox" id="modeFilter-tunnel" checked> Tunnel</label>
+                        <label><input type="checkbox" id="modeFilter-webgpu" checked> WebGPU</label>
                     </div>
                     <div class="mode-filter-actions">
                         <button id="modeFilterAll" class="viz-action-btn" title="Enable all modes">All</button>
@@ -125,6 +129,8 @@
         <!-- Fullscreen Visualizer -->
         <div class="fullscreen-visualizer" id="fullscreenVisualizer" style="display: none;">
             <canvas id="fullscreenCanvas"></canvas>
+            <!-- WebGPU fullscreen canvas overlay (shown only in WebGPU mode) -->
+            <canvas id="fullscreenWebgpuCanvas" style="display:none;"></canvas>
             <div class="fullscreen-controls">
                 <button class="exit-fullscreen-btn" id="exitFullscreenBtn">✕ Exit Fullscreen</button>
                 <div class="fullscreen-viz-controls">
@@ -139,6 +145,7 @@
                         <option value="spectrogram">Spectrogram</option>
                         <option value="lissajous">Lissajous</option>
                         <option value="tunnel">Tunnel Grid</option>
+                        <option value="webgpu">WebGPU Neon Ring</option>
                     </select>
                     <label>
                         <input type="checkbox" id="fullscreenShowParticles" checked> Particles
@@ -172,6 +179,7 @@
                             <label><input type="checkbox" id="fullscreenModeFilter-spectrogram" checked> Spectrogram</label>
                             <label><input type="checkbox" id="fullscreenModeFilter-lissajous" checked> Lissajous</label>
                             <label><input type="checkbox" id="fullscreenModeFilter-tunnel" checked> Tunnel</label>
+                            <label><input type="checkbox" id="fullscreenModeFilter-webgpu" checked> WebGPU</label>
                         </div>
                         <div class="mode-filter-actions">
                             <button id="fullscreenModeFilterAll" class="viz-action-btn" title="Enable all modes">All</button>
