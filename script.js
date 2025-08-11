@@ -26,6 +26,8 @@ class AudioVisualizer {
         this.initializeParticles();
     // UI reflects starting defaults
     this.syncUiControls();
+    // Spectrogram rendering settings
+    this.spectrogramRowHeight = 2;
     }
 
     initializeElements() {
@@ -620,7 +622,7 @@ class AudioVisualizer {
             case 'lissajous':
                 fft = 2048; smooth = 0.85; sens = 1.0; particles = false; break;
             case 'spectrogram':
-                fft = 2048; smooth = 0.9; sens = 1.0; particles = false; break;
+                fft = 2048; smooth = 0.9; sens = 1.2; particles = false; this.spectrogramRowHeight = 2; break;
             case 'tunnel':
                 fft = 256; smooth = 0.7; sens = 1.3; particles = true; break;
             case 'particles':
@@ -863,23 +865,28 @@ class AudioVisualizer {
     drawSpectrogram(ctx, canvas) {
         ctx = ctx || this.ctx;
         canvas = canvas || this.canvas;
-        // Shift the existing image up by 1px to create a scrolling spectrogram
+        const rowH = Math.max(1, this.spectrogramRowHeight | 0);
+        // Shift the existing image up by rowH pixels to create scroll
+        // Note: get/putImageData is used for simplicity and broad compatibility
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        ctx.putImageData(imageData, 0, -1);
+        ctx.putImageData(imageData, 0, -rowH);
 
-        // Draw new line at the bottom representing current frequency bins
+        // Draw new stripe at the bottom representing current frequency bins
         const bufferLength = this.analyser.frequencyBinCount;
         const freq = new Uint8Array(bufferLength);
         this.analyser.getByteFrequencyData(freq);
+        const yStart = canvas.height - rowH;
         for (let x = 0; x < canvas.width; x++) {
             const idx = Math.floor((x / canvas.width) * bufferLength);
-            const v = freq[idx] / 255;
+            // Brightness scaled by sensitivity with light gamma to lift quieter content
+            const v = (freq[idx] / 255) * this.sensitivity;
+            const brightness = 30 + Math.min(1, Math.pow(v, 0.8)) * 55; // 30%..85%
             const hue = (idx / bufferLength) * 360;
-            ctx.fillStyle = `hsl(${hue}, 100%, ${30 + v * 50}%)`;
-            ctx.fillRect(x, canvas.height - 1, 1, 1);
+            ctx.fillStyle = `hsl(${hue}, 100%, ${brightness}%)`;
+            ctx.fillRect(x, yStart, 1, rowH);
         }
-        // Optional glow overlay
-        ctx.globalAlpha = 0.05;
+        // Subtle darkening to prevent infinite persistence
+        ctx.globalAlpha = 0.02;
         ctx.fillStyle = '#000428';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.globalAlpha = 1;
