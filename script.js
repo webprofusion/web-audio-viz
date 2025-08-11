@@ -67,6 +67,14 @@ class AudioVisualizer {
     this.fullscreenAutoCycleIntervalInput = document.getElementById('fullscreenAutoCycleInterval');
     this.autoCycleTimer = null;
     this.autoCycleSeconds = 10;
+    // Cycle order and filters
+    this.cycleModeSelect = document.getElementById('cycleMode');
+    this.fullscreenCycleModeSelect = document.getElementById('fullscreenCycleMode');
+    this.availableModes = ['bars','wave','circle','spiral','particles','dualBars','radialBars','spectrogram','lissajous','tunnel'];
+    this.modeFilter = new Set(this.availableModes); // included modes
+    // checkbox elements map
+    this.modeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`modeFilter-${id}`)).filter(Boolean);
+    this.fullscreenModeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`fullscreenModeFilter-${id}`)).filter(Boolean);
     }
 
     setupEventListeners() {
@@ -132,6 +140,22 @@ class AudioVisualizer {
             if (this.autoCycleTimer) this.restartAutoCycle();
         });
 
+        // Cycle mode select
+        if (this.cycleModeSelect) {
+            this.cycleModeSelect.addEventListener('change', (e) => {
+                const mode = e.target.value === 'ordered' ? 'ordered' : 'random';
+                this.fullscreenCycleModeSelect.value = mode;
+                if (this.autoCycleTimer) this.restartAutoCycle();
+            });
+        }
+
+        // Mode filter main
+        const allBtn = document.getElementById('modeFilterAll');
+        const noneBtn = document.getElementById('modeFilterNone');
+        if (allBtn) allBtn.addEventListener('click', () => this.setModeFilterAll(true));
+        if (noneBtn) noneBtn.addEventListener('click', () => this.setModeFilterAll(false));
+        this.modeFilterCheckboxes.forEach(cb => cb.addEventListener('change', () => this.onModeFilterChanged('main')));
+
         // Fullscreen controls
         this.fullscreenBtn.addEventListener('click', this.enterFullscreen.bind(this));
         this.exitFullscreenBtn.addEventListener('click', this.exitFullscreen.bind(this));
@@ -176,6 +200,21 @@ class AudioVisualizer {
             if (this.autoCycleTimer) this.restartAutoCycle();
         });
 
+        // Fullscreen cycle select
+        if (this.fullscreenCycleModeSelect) {
+            this.fullscreenCycleModeSelect.addEventListener('change', (e) => {
+                const mode = e.target.value === 'ordered' ? 'ordered' : 'random';
+                this.cycleModeSelect.value = mode;
+                if (this.autoCycleTimer) this.restartAutoCycle();
+            });
+        }
+        // Fullscreen filter
+        const fsAll = document.getElementById('fullscreenModeFilterAll');
+        const fsNone = document.getElementById('fullscreenModeFilterNone');
+        if (fsAll) fsAll.addEventListener('click', () => this.setModeFilterAll(true));
+        if (fsNone) fsNone.addEventListener('click', () => this.setModeFilterAll(false));
+        this.fullscreenModeFilterCheckboxes.forEach(cb => cb.addEventListener('change', () => this.onModeFilterChanged('fs')));
+
         // Keyboard shortcuts for fullscreen
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.isFullscreen) {
@@ -192,6 +231,51 @@ class AudioVisualizer {
 
         // Window resize
         window.addEventListener('resize', this.setupCanvas.bind(this));
+    }
+
+    setModeFilterAll(enabled) {
+        this.modeFilter = new Set(enabled ? this.availableModes : []);
+        // update checkboxes both UIs
+        this.modeFilterCheckboxes.forEach(cb => cb.checked = enabled);
+        this.fullscreenModeFilterCheckboxes.forEach(cb => cb.checked = enabled);
+        // if current viz excluded, pick a valid one
+        if (!this.modeFilter.has(this.vizType) && this.modeFilter.size > 0) {
+            this.vizType = [...this.modeFilter][0];
+            this.applyVizDefaults();
+        }
+        this.syncUiControls();
+        if (this.autoCycleTimer) this.restartAutoCycle();
+    }
+
+    onModeFilterChanged(source) {
+        // sync sets from whichever changed
+        const readCbs = () => {
+            const set = new Set();
+            this.modeFilterCheckboxes.forEach(cb => { if (cb.checked) set.add(cb.id.replace('modeFilter-','')); });
+            return set;
+        };
+        this.modeFilter = readCbs();
+        // mirror to fullscreen
+        this.fullscreenModeFilterCheckboxes.forEach(cb => {
+            const id = cb.id.replace('fullscreenModeFilter-','');
+            cb.checked = this.modeFilter.has(id);
+        });
+        // ensure at least one remains
+        if (this.modeFilter.size === 0) {
+            // re-enable current mode
+            this.modeFilter.add(this.vizType);
+            const cb = document.getElementById(`modeFilter-${this.vizType}`);
+            const fcb = document.getElementById(`fullscreenModeFilter-${this.vizType}`);
+            if (cb) cb.checked = true;
+            if (fcb) fcb.checked = true;
+        }
+        // if current excluded, switch
+        if (!this.modeFilter.has(this.vizType)) {
+            this.vizType = [...this.modeFilter][0];
+            this.applyVizDefaults();
+        }
+        this.syncUiControls();
+        if (this.autoCycleTimer) this.restartAutoCycle();
     }
 
     setupCanvas() {
@@ -556,26 +640,64 @@ class AudioVisualizer {
             this.autoCycleCheckbox.checked = !!this.autoCycleTimer;
             this.fullscreenAutoCycleCheckbox.checked = !!this.autoCycleTimer;
         }
+        // cycle mode
+        if (this.cycleModeSelect && this.fullscreenCycleModeSelect) {
+            const val = this.cycleModeSelect.value || 'random';
+            this.cycleModeSelect.value = val;
+            this.fullscreenCycleModeSelect.value = val;
+        }
+        // filters
+        if (this.modeFilter && this.modeFilterCheckboxes.length) {
+            this.modeFilterCheckboxes.forEach(cb => {
+                const id = cb.id.replace('modeFilter-','');
+                cb.checked = this.modeFilter.has(id);
+            });
+        }
+        if (this.fullscreenModeFilterCheckboxes.length) {
+            this.fullscreenModeFilterCheckboxes.forEach(cb => {
+                const id = cb.id.replace('fullscreenModeFilter-','');
+                cb.checked = this.modeFilter.has(id);
+            });
+        }
     }
 
     setRandomMode() {
-        const modes = ['bars','wave','circle','spiral','particles','dualBars','radialBars','spectrogram','lissajous','tunnel'];
+        const modes = this.getFilteredModes();
+        if (modes.length === 0) return;
         const current = this.vizType;
         let next = current;
-        // ensure change
-        while (next === current) {
-            next = modes[Math.floor(Math.random() * modes.length)];
+        if (modes.length === 1) {
+            next = modes[0];
+        } else {
+            while (next === current) {
+                next = modes[Math.floor(Math.random() * modes.length)];
+            }
         }
         this.vizType = next;
         this.applyVizDefaults();
         this.syncUiControls();
     }
 
+    getFilteredModes() {
+        return this.availableModes.filter(m => this.modeFilter.has(m));
+    }
+
     startAutoCycle() {
         this.stopAutoCycle();
-        this.autoCycleTimer = setInterval(() => {
-            this.setRandomMode();
-        }, this.autoCycleSeconds * 1000);
+        const tick = () => {
+            const modes = this.getFilteredModes();
+            if (modes.length === 0) return;
+            if ((this.cycleModeSelect?.value || 'random') === 'ordered') {
+                const idx = modes.indexOf(this.vizType);
+                const next = modes[(idx + 1) % modes.length];
+                this.vizType = next;
+                this.applyVizDefaults();
+                this.syncUiControls();
+            } else {
+                this.setRandomMode();
+            }
+        };
+        this.autoCycleTimer = setInterval(tick, this.autoCycleSeconds * 1000);
         this.syncUiControls();
     }
 

@@ -87,6 +87,32 @@
                     Every
                     <input type="number" id="autoCycleInterval" min="2" max="60" step="1" value="10" style="width:64px;"> s
                 </label>
+                <label>
+                    Cycle:
+                    <select id="cycleMode">
+                        <option value="random">Random</option>
+                        <option value="ordered">In order</option>
+                    </select>
+                </label>
+                <div class="mode-filter">
+                    <span class="mode-filter-title">Modes:</span>
+                    <div class="mode-filter-grid">
+                        <label><input type="checkbox" id="modeFilter-bars" checked> Bars</label>
+                        <label><input type="checkbox" id="modeFilter-wave" checked> Wave</label>
+                        <label><input type="checkbox" id="modeFilter-circle" checked> Circle</label>
+                        <label><input type="checkbox" id="modeFilter-spiral" checked> Spiral</label>
+                        <label><input type="checkbox" id="modeFilter-particles" checked> Particles</label>
+                        <label><input type="checkbox" id="modeFilter-dualBars" checked> Mirrored Bars</label>
+                        <label><input type="checkbox" id="modeFilter-radialBars" checked> Radial Bars</label>
+                        <label><input type="checkbox" id="modeFilter-spectrogram" checked> Spectrogram</label>
+                        <label><input type="checkbox" id="modeFilter-lissajous" checked> Lissajous</label>
+                        <label><input type="checkbox" id="modeFilter-tunnel" checked> Tunnel</label>
+                    </div>
+                    <div class="mode-filter-actions">
+                        <button id="modeFilterAll" class="viz-action-btn" title="Enable all modes">All</button>
+                        <button id="modeFilterNone" class="viz-action-btn" title="Disable all modes">None</button>
+                    </div>
+                </div>
                 <div class="viz-actions">
                     <button id="resetDefaultsBtn" class="viz-action-btn" title="Reset controls to mode defaults">Reset Defaults</button>
                     <button id="randomizeModeBtn" class="viz-action-btn" title="Pick a random visualization">Randomize</button>
@@ -123,6 +149,32 @@
                         Every
                         <input type="number" id="fullscreenAutoCycleInterval" min="2" max="60" step="1" value="10" style="width:64px;"> s
                     </label>
+                    <label>
+                        Cycle:
+                        <select id="fullscreenCycleMode">
+                            <option value="random">Random</option>
+                            <option value="ordered">In order</option>
+                        </select>
+                    </label>
+                    <div class="mode-filter">
+                        <span class="mode-filter-title">Modes:</span>
+                        <div class="mode-filter-grid">
+                            <label><input type="checkbox" id="fullscreenModeFilter-bars" checked> Bars</label>
+                            <label><input type="checkbox" id="fullscreenModeFilter-wave" checked> Wave</label>
+                            <label><input type="checkbox" id="fullscreenModeFilter-circle" checked> Circle</label>
+                            <label><input type="checkbox" id="fullscreenModeFilter-spiral" checked> Spiral</label>
+                            <label><input type="checkbox" id="fullscreenModeFilter-particles" checked> Particles</label>
+                            <label><input type="checkbox" id="fullscreenModeFilter-dualBars" checked> Mirrored Bars</label>
+                            <label><input type="checkbox" id="fullscreenModeFilter-radialBars" checked> Radial Bars</label>
+                            <label><input type="checkbox" id="fullscreenModeFilter-spectrogram" checked> Spectrogram</label>
+                            <label><input type="checkbox" id="fullscreenModeFilter-lissajous" checked> Lissajous</label>
+                            <label><input type="checkbox" id="fullscreenModeFilter-tunnel" checked> Tunnel</label>
+                        </div>
+                        <div class="mode-filter-actions">
+                            <button id="fullscreenModeFilterAll" class="viz-action-btn" title="Enable all modes">All</button>
+                            <button id="fullscreenModeFilterNone" class="viz-action-btn" title="Disable all modes">None</button>
+                        </div>
+                    </div>
                     <div class="viz-actions">
                         <button id="fullscreenResetDefaultsBtn" class="viz-action-btn" title="Reset controls to mode defaults">Reset Defaults</button>
                         <button id="fullscreenRandomizeModeBtn" class="viz-action-btn" title="Pick a random visualization">Randomize</button>

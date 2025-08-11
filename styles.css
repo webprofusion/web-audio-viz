@@ -579,6 +579,30 @@ body {
     box-shadow: 0 8px 20px rgba(0, 255, 255, 0.25);
 }
 
+/* Mode filter controls */
+.mode-filter {
+    display: block;
+    margin-top: 0.5rem;
+}
+.mode-filter-title {
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+.mode-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+    gap: 4px 12px;
+    margin-top: 6px;
+}
+.fullscreen-viz-controls .mode-filter-grid {
+    grid-template-columns: repeat(3, minmax(160px, 1fr));
+}
+.mode-filter-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
 .visualizer-controls select:focus,
 .visualizer-controls input[type="range"]:focus {
     outline: none;
