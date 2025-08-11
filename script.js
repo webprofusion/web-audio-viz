@@ -366,7 +366,7 @@ class AudioVisualizer {
         this.loadFiles(files);
     }
 
-    loadFiles(files) {
+    loadFiles(files, autoPlay = true) {
         if (files.length === 0) return;
 
         this.playlist = files.map((file, index) => ({
@@ -381,6 +381,13 @@ class AudioVisualizer {
         this.playerControls.style.display = 'block';
         this.playlist.style.display = 'block';
         this.dropZone.style.display = 'none';
+        // Auto-play the first track on user file selection/drop
+        if (autoPlay) {
+            // Defer slightly to ensure AudioContext is initialized and src set
+            setTimeout(() => {
+                this.play()?.catch?.(() => { /* ignore autoplay policy errors */ });
+            }, 0);
+        }
     }
 
     renderPlaylist() {
