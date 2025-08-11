@@ -24,6 +24,8 @@ class AudioVisualizer {
         this.setupEventListeners();
         this.setupCanvas();
         this.initializeParticles();
+    // UI reflects starting defaults
+    this.syncUiControls();
     }
 
     initializeElements() {
@@ -81,6 +83,8 @@ class AudioVisualizer {
         this.vizTypeSelect.addEventListener('change', (e) => {
             this.vizType = e.target.value;
             this.fullscreenVizType.value = e.target.value;
+            this.applyVizDefaults();
+            this.syncUiControls();
         });
         this.showParticlesCheckbox.addEventListener('change', (e) => {
             this.showParticles = e.target.checked;
@@ -99,6 +103,8 @@ class AudioVisualizer {
         this.fullscreenVizType.addEventListener('change', (e) => {
             this.vizType = e.target.value;
             this.vizTypeSelect.value = e.target.value;
+            this.applyVizDefaults();
+            this.syncUiControls();
         });
         this.fullscreenShowParticles.addEventListener('change', (e) => {
             this.showParticles = e.target.checked;
@@ -264,10 +270,13 @@ class AudioVisualizer {
             this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
             this.analyser = this.audioContext.createAnalyser();
             this.analyser.fftSize = 256;
+            this.analyser.smoothingTimeConstant = 0.7;
             
             const source = this.audioContext.createMediaElementSource(this.audioElement);
             source.connect(this.analyser);
             this.analyser.connect(this.audioContext.destination);
+            // Ensure defaults match current mode now that analyser exists
+            this.applyVizDefaults();
         }
 
         if (this.audioContext.state === 'suspended') {
@@ -389,7 +398,10 @@ class AudioVisualizer {
         const currentCanvas = this.isFullscreen ? this.fullscreenCanvas : this.canvas;
         const currentCtx = this.isFullscreen ? this.fullscreenCtx : this.ctx;
         
-        this.clearCanvas(currentCtx, currentCanvas);
+        // For spectrogram we preserve history, so don't clear here
+        if (this.vizType !== 'spectrogram') {
+            this.clearCanvas(currentCtx, currentCanvas);
+        }
         
         switch (this.vizType) {
             case 'bars':
@@ -427,6 +439,56 @@ class AudioVisualizer {
         if (this.showParticles && this.vizType !== 'particles') {
             this.updateAndDrawParticles(dataArray, currentCtx, currentCanvas);
         }
+    }
+
+    applyVizDefaults() {
+        // Choose analyzer + visual defaults per mode
+        const mode = this.vizType;
+        let fft = 256;
+        let smooth = 0.7;
+        let sens = 1.0;
+        let particles = true;
+
+        switch (mode) {
+            case 'bars':
+                fft = 256; smooth = 0.65; sens = 1.2; particles = true; break;
+            case 'dualBars':
+                fft = 512; smooth = 0.65; sens = 1.1; particles = true; break;
+            case 'radialBars':
+                fft = 512; smooth = 0.7; sens = 1.0; particles = true; break;
+            case 'circle':
+                fft = 512; smooth = 0.7; sens = 1.0; particles = true; break;
+            case 'spiral':
+                fft = 512; smooth = 0.75; sens = 1.2; particles = true; break;
+            case 'wave':
+                fft = 2048; smooth = 0.85; sens = 1.0; particles = false; break;
+            case 'lissajous':
+                fft = 2048; smooth = 0.85; sens = 1.0; particles = false; break;
+            case 'spectrogram':
+                fft = 2048; smooth = 0.9; sens = 1.0; particles = false; break;
+            case 'tunnel':
+                fft = 256; smooth = 0.7; sens = 1.3; particles = true; break;
+            case 'particles':
+                fft = 256; smooth = 0.65; sens = 1.1; particles = true; break;
+        }
+
+        // Apply analyser settings if available
+        if (this.analyser) {
+            try { this.analyser.fftSize = fft; } catch {}
+            this.analyser.smoothingTimeConstant = smooth;
+        }
+        // Apply visual settings
+        this.sensitivity = sens;
+        this.showParticles = particles;
+    }
+
+    syncUiControls() {
+        if (this.showParticlesCheckbox) this.showParticlesCheckbox.checked = this.showParticles;
+        if (this.fullscreenShowParticles) this.fullscreenShowParticles.checked = this.showParticles;
+        if (this.sensitivitySlider) this.sensitivitySlider.value = String(this.sensitivity);
+        if (this.fullscreenSensitivity) this.fullscreenSensitivity.value = String(this.sensitivity);
+        if (this.vizTypeSelect) this.vizTypeSelect.value = this.vizType;
+        if (this.fullscreenVizType) this.fullscreenVizType.value = this.vizType;
     }
 
     clearCanvas(ctx, canvas) {
