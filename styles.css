@@ -557,6 +557,28 @@ body {
     transition: all 0.3s ease;
 }
 
+.viz-actions {
+    display: flex;
+    gap: 0.8rem;
+}
+
+.viz-action-btn {
+    background: linear-gradient(135deg, var(--accent-neon), #0099cc);
+    color: #0a0a0f;
+    border: none;
+    padding: 0.6rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+
+.viz-action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(0, 255, 255, 0.25);
+}
+
 .visualizer-controls select:focus,
 .visualizer-controls input[type="range"]:focus {
     outline: none;

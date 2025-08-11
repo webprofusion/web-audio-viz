@@ -55,6 +55,11 @@ class AudioVisualizer {
         this.fullscreenVizType = document.getElementById('fullscreenVizType');
         this.fullscreenShowParticles = document.getElementById('fullscreenShowParticles');
         this.fullscreenSensitivity = document.getElementById('fullscreenSensitivity');
+    // Action buttons
+    this.resetDefaultsBtn = document.getElementById('resetDefaultsBtn');
+    this.randomizeModeBtn = document.getElementById('randomizeModeBtn');
+    this.fullscreenResetDefaultsBtn = document.getElementById('fullscreenResetDefaultsBtn');
+    this.fullscreenRandomizeModeBtn = document.getElementById('fullscreenRandomizeModeBtn');
     }
 
     setupEventListeners() {
@@ -95,6 +100,15 @@ class AudioVisualizer {
             this.fullscreenSensitivity.value = e.target.value;
         });
 
+        // Actions
+        this.resetDefaultsBtn.addEventListener('click', () => {
+            this.applyVizDefaults();
+            this.syncUiControls();
+        });
+        this.randomizeModeBtn.addEventListener('click', () => {
+            this.setRandomMode();
+        });
+
         // Fullscreen controls
         this.fullscreenBtn.addEventListener('click', this.enterFullscreen.bind(this));
         this.exitFullscreenBtn.addEventListener('click', this.exitFullscreen.bind(this));
@@ -113,6 +127,14 @@ class AudioVisualizer {
         this.fullscreenSensitivity.addEventListener('input', (e) => {
             this.sensitivity = parseFloat(e.target.value);
             this.sensitivitySlider.value = e.target.value;
+        });
+
+        this.fullscreenResetDefaultsBtn.addEventListener('click', () => {
+            this.applyVizDefaults();
+            this.syncUiControls();
+        });
+        this.fullscreenRandomizeModeBtn.addEventListener('click', () => {
+            this.setRandomMode();
         });
 
         // Keyboard shortcuts for fullscreen
@@ -489,6 +511,19 @@ class AudioVisualizer {
         if (this.fullscreenSensitivity) this.fullscreenSensitivity.value = String(this.sensitivity);
         if (this.vizTypeSelect) this.vizTypeSelect.value = this.vizType;
         if (this.fullscreenVizType) this.fullscreenVizType.value = this.vizType;
+    }
+
+    setRandomMode() {
+        const modes = ['bars','wave','circle','spiral','particles','dualBars','radialBars','spectrogram','lissajous','tunnel'];
+        const current = this.vizType;
+        let next = current;
+        // ensure change
+        while (next === current) {
+            next = modes[Math.floor(Math.random() * modes.length)];
+        }
+        this.vizType = next;
+        this.applyVizDefaults();
+        this.syncUiControls();
     }
 
     clearCanvas(ctx, canvas) {
