@@ -39,7 +39,8 @@ class AudioVisualizer {
         this.setupEventListeners();
         this.setupCanvas();
         this.initializeParticles();
-    // UI reflects starting defaults
+    // Load persisted settings if available, then sync UI
+    this.loadSettings();
     this.syncUiControls();
     // Spectrogram rendering settings
     this.spectrogramRowHeight = 2;
@@ -91,7 +92,7 @@ class AudioVisualizer {
     // Cycle order and filters
     this.cycleModeSelect = document.getElementById('cycleMode');
     this.fullscreenCycleModeSelect = document.getElementById('fullscreenCycleMode');
-    this.availableModes = ['bars','wave','circle','spiral','particles','dualBars','radialBars','spectrogram','lissajous','tunnel','webgpu'];
+    this.availableModes = ['bars','wave','circle','spiral','particles','dualBars','radialBars','spectrogram','lissajous','tunnel','webgpu','webgpuFlow','webgpuGrid'];
     this.modeFilter = new Set(this.availableModes); // included modes
     // checkbox elements map
     this.modeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`modeFilter-${id}`)).filter(Boolean);
@@ -127,23 +128,28 @@ class AudioVisualizer {
             this.applyVizDefaults();
             this.syncUiControls();
             this.toggleWebGPUVisibility();
+            this.saveSettings();
         });
         this.showParticlesCheckbox.addEventListener('change', (e) => {
             this.showParticles = e.target.checked;
             this.fullscreenShowParticles.checked = e.target.checked;
+            this.saveSettings();
         });
         this.sensitivitySlider.addEventListener('input', (e) => {
             this.sensitivity = parseFloat(e.target.value);
             this.fullscreenSensitivity.value = e.target.value;
+            this.saveSettings();
         });
 
         // Actions
         this.resetDefaultsBtn.addEventListener('click', () => {
             this.applyVizDefaults();
             this.syncUiControls();
+            this.saveSettings();
         });
         this.randomizeModeBtn.addEventListener('click', () => {
             this.setRandomMode();
+            this.saveSettings();
         });
 
         // Auto cycle main
@@ -155,12 +161,14 @@ class AudioVisualizer {
             } else {
                 this.stopAutoCycle();
             }
+            this.saveSettings();
         });
         this.autoCycleIntervalInput.addEventListener('input', (e) => {
             const v = Math.max(2, Math.min(60, parseInt(e.target.value || '10', 10)));
             this.autoCycleSeconds = v;
             this.fullscreenAutoCycleIntervalInput.value = String(v);
             if (this.autoCycleTimer) this.restartAutoCycle();
+            this.saveSettings();
         });
 
         // Cycle mode select
@@ -169,15 +177,16 @@ class AudioVisualizer {
                 const mode = e.target.value === 'ordered' ? 'ordered' : 'random';
                 this.fullscreenCycleModeSelect.value = mode;
                 if (this.autoCycleTimer) this.restartAutoCycle();
+                this.saveSettings();
             });
         }
 
         // Mode filter main
         const allBtn = document.getElementById('modeFilterAll');
         const noneBtn = document.getElementById('modeFilterNone');
-        if (allBtn) allBtn.addEventListener('click', () => this.setModeFilterAll(true));
-        if (noneBtn) noneBtn.addEventListener('click', () => this.setModeFilterAll(false));
-        this.modeFilterCheckboxes.forEach(cb => cb.addEventListener('change', () => this.onModeFilterChanged('main')));
+    if (allBtn) allBtn.addEventListener('click', () => { this.setModeFilterAll(true); this.saveSettings(); });
+    if (noneBtn) noneBtn.addEventListener('click', () => { this.setModeFilterAll(false); this.saveSettings(); });
+    this.modeFilterCheckboxes.forEach(cb => cb.addEventListener('change', () => { this.onModeFilterChanged('main'); this.saveSettings(); }));
 
         // Fullscreen controls
         this.fullscreenBtn.addEventListener('click', this.enterFullscreen.bind(this));
@@ -190,22 +199,27 @@ class AudioVisualizer {
             this.applyVizDefaults();
             this.syncUiControls();
             this.toggleWebGPUVisibility();
+            this.saveSettings();
         });
         this.fullscreenShowParticles.addEventListener('change', (e) => {
             this.showParticles = e.target.checked;
             this.showParticlesCheckbox.checked = e.target.checked;
+            this.saveSettings();
         });
         this.fullscreenSensitivity.addEventListener('input', (e) => {
             this.sensitivity = parseFloat(e.target.value);
             this.sensitivitySlider.value = e.target.value;
+            this.saveSettings();
         });
 
         this.fullscreenResetDefaultsBtn.addEventListener('click', () => {
             this.applyVizDefaults();
             this.syncUiControls();
+            this.saveSettings();
         });
         this.fullscreenRandomizeModeBtn.addEventListener('click', () => {
             this.setRandomMode();
+            this.saveSettings();
         });
 
         // Auto cycle fullscreen
@@ -217,12 +231,14 @@ class AudioVisualizer {
             } else {
                 this.stopAutoCycle();
             }
+            this.saveSettings();
         });
         this.fullscreenAutoCycleIntervalInput.addEventListener('input', (e) => {
             const v = Math.max(2, Math.min(60, parseInt(e.target.value || '10', 10)));
             this.autoCycleSeconds = v;
             this.autoCycleIntervalInput.value = String(v);
             if (this.autoCycleTimer) this.restartAutoCycle();
+            this.saveSettings();
         });
 
         // Fullscreen cycle select
@@ -231,14 +247,15 @@ class AudioVisualizer {
                 const mode = e.target.value === 'ordered' ? 'ordered' : 'random';
                 this.cycleModeSelect.value = mode;
                 if (this.autoCycleTimer) this.restartAutoCycle();
+                this.saveSettings();
             });
         }
         // Fullscreen filter
         const fsAll = document.getElementById('fullscreenModeFilterAll');
         const fsNone = document.getElementById('fullscreenModeFilterNone');
-        if (fsAll) fsAll.addEventListener('click', () => this.setModeFilterAll(true));
-        if (fsNone) fsNone.addEventListener('click', () => this.setModeFilterAll(false));
-        this.fullscreenModeFilterCheckboxes.forEach(cb => cb.addEventListener('change', () => this.onModeFilterChanged('fs')));
+    if (fsAll) fsAll.addEventListener('click', () => { this.setModeFilterAll(true); this.saveSettings(); });
+    if (fsNone) fsNone.addEventListener('click', () => { this.setModeFilterAll(false); this.saveSettings(); });
+    this.fullscreenModeFilterCheckboxes.forEach(cb => cb.addEventListener('change', () => { this.onModeFilterChanged('fs'); this.saveSettings(); }));
 
         // Keyboard shortcuts for fullscreen
         document.addEventListener('keydown', (e) => {
@@ -259,7 +276,7 @@ class AudioVisualizer {
     }
 
     toggleWebGPUVisibility() {
-        const isGpu = this.vizType === 'webgpu';
+        const isGpu = this.vizType === 'webgpu' || this.vizType === 'webgpuFlow' || this.vizType === 'webgpuGrid';
         if (this.webgpuCanvas) this.webgpuCanvas.style.display = isGpu ? '' : 'none';
         if (this.canvas) this.canvas.style.display = isGpu ? 'none' : '';
         if (this.fullscreenWebgpuCanvas) this.fullscreenWebgpuCanvas.style.display = (isGpu && this.isFullscreen) ? '' : 'none';
@@ -332,7 +349,7 @@ class AudioVisualizer {
             this.fullscreenWebgpuCanvas.width = window.innerWidth;
             this.fullscreenWebgpuCanvas.height = window.innerHeight;
         }
-        // If WebGPU initialized, reconfigure contexts to new size
+    // If WebGPU initialized, reconfigure contexts to new size
         if (this.gpuDevice) {
             this.configureGpuContexts();
         }
@@ -375,7 +392,7 @@ class AudioVisualizer {
         }
     }
 
-        async ensureWebGPU() {
+    async ensureWebGPU() {
                 if (this.gpuDevice) return true;
                 try {
                         if (!('gpu' in navigator)) return false;
@@ -407,10 +424,10 @@ class AudioVisualizer {
                 }
         }
 
-        async createGpuPipelines() {
-                        const wgsl2 = `
-        struct Uniforms { time:f32, amp:f32, aspect:f32, pad:f32 };
-        @group(0) @binding(0) var<uniform> u:Uniforms;
+    async createGpuPipelines() {
+            const wgsl2 = `
+    struct Uniforms { time:f32, amp:f32, aspect:f32, mode:f32 };
+    @group(0) @binding(0) var<uniform> u:Uniforms;
 
         struct VSOut { @builtin(position) pos: vec4f, @location(0) uv: vec2f };
 
@@ -433,15 +450,40 @@ class AudioVisualizer {
             return vec3f(r,g,b);
         }
 
+        fn hash(p:vec2f)->f32 { return fract(sin(dot(p, vec2f(127.1,311.7))) * 43758.5453); }
+
         @fragment fn fs(@location(0) uvIn:vec2f)->@location(0) vec4f{
             var uv = uvIn;
             uv.x *= u.aspect;
             let r = length(uv);
-            let k = 10.0 + u.amp * 30.0;
-            let waves = sin(k * r - u.time*2.0);
-            let glow = exp(-8.0 * abs(waves));
-            let hue = fract(r * 0.75 + u.time * 0.05);
-            let col = neonColor(hue) * (0.3 + 0.7 * glow);
+            let mode = u.mode; // 0: ring, 1: flow, 2: grid
+            var col = vec3f(0.0,0.0,0.0);
+            if (mode < 0.5) {
+                // Neon Ring
+                let k = 10.0 + u.amp * 30.0;
+                let waves = sin(k * r - u.time*2.0);
+                let glow = exp(-8.0 * abs(waves));
+                let hue = fract(r * 0.75 + u.time * 0.05);
+                col = neonColor(hue) * (0.3 + 0.7 * glow);
+            } else if (mode < 1.5) {
+                // Flow Field
+                var p = uv * 1.2;
+                let t = u.time * 0.2;
+                let a = sin(p.x*3.0 + t) + cos(p.y*3.0 - t*1.3);
+                let b = cos(p.x*2.0 - t*1.7) - sin(p.y*2.5 + t*0.7);
+                let v = sin(a*b + r*6.0 + u.amp*8.0);
+                let hue = fract(0.5 + v*0.2 + u.time*0.02);
+                col = neonColor(hue) * (0.4 + 0.6 * smoothstep(0.2,1.0,abs(v)));
+            } else {
+                // Pulsing Grid
+                var p = uv * 10.0;
+                let gx = abs(fract(p.x) - 0.5);
+                let gy = abs(fract(p.y) - 0.5);
+                let g = max(0.0, 0.5 - min(gx, gy)*1.6);
+                let pulse = 0.5 + 0.5*sin(u.time*3.0 + r*12.0 + u.amp*20.0);
+                let hue = fract(uv.x*0.3 + uv.y*0.2 + u.time*0.05);
+                col = neonColor(hue) * (g * (0.2 + 0.8*pulse));
+            }
             return vec4f(col,1.0);
         }
         `;
@@ -464,7 +506,7 @@ class AudioVisualizer {
                 this.gpuFsBindGroup = this.gpuDevice.createBindGroup({ layout: this.gpuPipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: { buffer: this.gpuFsUniformBuffer } }] });
         }
 
-        drawWebGPU(currentCtxIsFullscreen) {
+    drawWebGPU(currentCtxIsFullscreen) {
                 if (!this.gpuDevice) return;
                 const t = performance.now() * 0.001;
                 // Estimate amplitude from analyser
@@ -477,9 +519,13 @@ class AudioVisualizer {
                         for (let i=0;i<n;i++) sum += arr[i];
                         amp = (sum / (n*255)) * this.sensitivity;
                 }
+        // Choose mode index for shader
+        let modeIdx = 0; // ring
+        if (this.vizType === 'webgpuFlow') modeIdx = 1;
+        else if (this.vizType === 'webgpuGrid') modeIdx = 2;
                 if (currentCtxIsFullscreen) {
                         const aspect = this.fullscreenWebgpuCanvas.width / Math.max(1, this.fullscreenWebgpuCanvas.height);
-                        const data = new Float32Array([t, amp, aspect, 0]);
+            const data = new Float32Array([t, amp, aspect, modeIdx]);
                         this.gpuDevice.queue.writeBuffer(this.gpuFsUniformBuffer, 0, data.buffer);
                         const encoder = this.gpuDevice.createCommandEncoder();
                         const view = this.gpuFsContext.getCurrentTexture().createView();
@@ -491,7 +537,7 @@ class AudioVisualizer {
                         this.gpuDevice.queue.submit([encoder.finish()]);
                 } else {
                         const aspect = this.webgpuCanvas.width / Math.max(1, this.webgpuCanvas.height);
-                        const data = new Float32Array([t, amp, aspect, 0]);
+            const data = new Float32Array([t, amp, aspect, modeIdx]);
                         this.gpuDevice.queue.writeBuffer(this.gpuUniformBuffer, 0, data.buffer);
                         const encoder = this.gpuDevice.createCommandEncoder();
                         const view = this.gpuContext.getCurrentTexture().createView();
@@ -736,7 +782,7 @@ class AudioVisualizer {
             this.clearCanvas(currentCtx, currentCanvas);
         }
         
-        switch (this.vizType) {
+    switch (this.vizType) {
             case 'bars':
                 this.drawFrequencyBars(dataArray, currentCtx, currentCanvas);
                 break;
@@ -768,6 +814,8 @@ class AudioVisualizer {
                 this.drawTunnel(dataArray, currentCtx, currentCanvas);
                 break;
             case 'webgpu':
+            case 'webgpuFlow':
+            case 'webgpuGrid':
                 // Ensure WebGPU is ready then render
                 this.drawWebGPU(this.isFullscreen);
                 break;
@@ -786,7 +834,7 @@ class AudioVisualizer {
         let sens = 1.0;
         let particles = true;
 
-        switch (mode) {
+    switch (mode) {
             case 'bars':
                 fft = 256; smooth = 0.65; sens = 1.2; particles = true; break;
             case 'dualBars':
@@ -808,6 +856,8 @@ class AudioVisualizer {
             case 'particles':
                 fft = 256; smooth = 0.65; sens = 1.1; particles = true; break;
             case 'webgpu':
+            case 'webgpuFlow':
+            case 'webgpuGrid':
                 fft = 512; smooth = 0.8; sens = 1.1; particles = false; 
                 // Lazy-init WebGPU and fallback to bars if unsupported
                 this.ensureWebGPU().then((ok)=>{ 
@@ -829,6 +879,68 @@ class AudioVisualizer {
         // Apply visual settings
         this.sensitivity = sens;
         this.showParticles = particles;
+    }
+
+    // Persist and restore settings
+    saveSettings() {
+        try {
+            const obj = {
+                vizType: this.vizType,
+                showParticles: this.showParticles,
+                sensitivity: this.sensitivity,
+                autoCycle: !!this.autoCycleTimer || (this.autoCycleCheckbox?.checked ?? false),
+                autoCycleSeconds: this.autoCycleSeconds,
+                cycleMode: this.cycleModeSelect?.value || 'random',
+                modeFilter: Array.from(this.modeFilter || [])
+            };
+            localStorage.setItem('waviz.settings', JSON.stringify(obj));
+        } catch {}
+    }
+
+    loadSettings() {
+        try {
+            const raw = localStorage.getItem('waviz.settings');
+            if (!raw) return;
+            const s = JSON.parse(raw);
+            if (typeof s.vizType === 'string') this.vizType = s.vizType;
+            if (typeof s.showParticles === 'boolean') this.showParticles = s.showParticles;
+            if (typeof s.sensitivity === 'number') this.sensitivity = s.sensitivity;
+            if (typeof s.autoCycleSeconds === 'number') this.autoCycleSeconds = Math.max(2, Math.min(60, s.autoCycleSeconds));
+            if (Array.isArray(s.modeFilter) && s.modeFilter.length) this.modeFilter = new Set(s.modeFilter.filter(m => this.availableModes.includes(m)));
+            // write to UI if elements exist; start auto cycle if requested
+            if (this.vizTypeSelect) this.vizTypeSelect.value = this.vizType;
+            if (this.fullscreenVizType) this.fullscreenVizType.value = this.vizType;
+            if (this.showParticlesCheckbox) this.showParticlesCheckbox.checked = this.showParticles;
+            if (this.fullscreenShowParticles) this.fullscreenShowParticles.checked = this.showParticles;
+            if (this.sensitivitySlider) this.sensitivitySlider.value = String(this.sensitivity);
+            if (this.fullscreenSensitivity) this.fullscreenSensitivity.value = String(this.sensitivity);
+            if (this.autoCycleIntervalInput) this.autoCycleIntervalInput.value = String(this.autoCycleSeconds);
+            if (this.fullscreenAutoCycleIntervalInput) this.fullscreenAutoCycleIntervalInput.value = String(this.autoCycleSeconds);
+            if (this.cycleModeSelect && typeof s.cycleMode === 'string') {
+                const val = s.cycleMode === 'ordered' ? 'ordered' : 'random';
+                this.cycleModeSelect.value = val;
+                if (this.fullscreenCycleModeSelect) this.fullscreenCycleModeSelect.value = val;
+            }
+            // Update filter checkboxes
+            if (this.modeFilterCheckboxes?.length) {
+                this.modeFilterCheckboxes.forEach(cb => {
+                    const id = cb.id.replace('modeFilter-','');
+                    cb.checked = this.modeFilter.has(id);
+                });
+            }
+            if (this.fullscreenModeFilterCheckboxes?.length) {
+                this.fullscreenModeFilterCheckboxes.forEach(cb => {
+                    const id = cb.id.replace('fullscreenModeFilter-','');
+                    cb.checked = this.modeFilter.has(id);
+                });
+            }
+            // Auto cycle last: reflects in UI and timer
+            if (s.autoCycle) {
+                if (this.autoCycleCheckbox) this.autoCycleCheckbox.checked = true;
+                if (this.fullscreenAutoCycleCheckbox) this.fullscreenAutoCycleCheckbox.checked = true;
+                this.startAutoCycle();
+            }
+        } catch {}
     }
 
     syncUiControls() {
