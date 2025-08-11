@@ -69,6 +69,8 @@ class AudioVisualizer {
     this.fullscreenAutoCycleIntervalInput = document.getElementById('fullscreenAutoCycleInterval');
     this.autoCycleTimer = null;
     this.autoCycleSeconds = 10;
+    this.cycleOptions = document.getElementById('cycleOptions');
+    this.fullscreenCycleOptions = document.getElementById('fullscreenCycleOptions');
     // Cycle order and filters
     this.cycleModeSelect = document.getElementById('cycleMode');
     this.fullscreenCycleModeSelect = document.getElementById('fullscreenCycleMode');
@@ -129,6 +131,7 @@ class AudioVisualizer {
         // Auto cycle main
         this.autoCycleCheckbox.addEventListener('change', (e) => {
             this.fullscreenAutoCycleCheckbox.checked = e.target.checked;
+            if (this.cycleOptions) this.cycleOptions.style.display = e.target.checked ? '' : 'none';
             if (e.target.checked) {
                 this.startAutoCycle();
             } else {
@@ -189,6 +192,7 @@ class AudioVisualizer {
         // Auto cycle fullscreen
         this.fullscreenAutoCycleCheckbox.addEventListener('change', (e) => {
             this.autoCycleCheckbox.checked = e.target.checked;
+            if (this.fullscreenCycleOptions) this.fullscreenCycleOptions.style.display = e.target.checked ? '' : 'none';
             if (e.target.checked) {
                 this.startAutoCycle();
             } else {
@@ -651,6 +655,8 @@ class AudioVisualizer {
         if (this.autoCycleCheckbox && this.fullscreenAutoCycleCheckbox) {
             this.autoCycleCheckbox.checked = !!this.autoCycleTimer;
             this.fullscreenAutoCycleCheckbox.checked = !!this.autoCycleTimer;
+            if (this.cycleOptions) this.cycleOptions.style.display = this.autoCycleTimer ? '' : 'none';
+            if (this.fullscreenCycleOptions) this.fullscreenCycleOptions.style.display = this.autoCycleTimer ? '' : 'none';
         }
         // cycle mode
         if (this.cycleModeSelect && this.fullscreenCycleModeSelect) {

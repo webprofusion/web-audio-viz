@@ -87,14 +87,15 @@
                     Every
                     <input type="number" id="autoCycleInterval" min="2" max="60" step="1" value="10" style="width:64px;"> s
                 </label>
-                <label>
-                    Cycle:
-                    <select id="cycleMode">
-                        <option value="random">Random</option>
-                        <option value="ordered">In order</option>
-                    </select>
-                </label>
-                <div class="mode-filter">
+                <div id="cycleOptions" style="display:none;">
+                    <label>
+                        Cycle:
+                        <select id="cycleMode">
+                            <option value="random">Random</option>
+                            <option value="ordered">In order</option>
+                        </select>
+                    </label>
+                    <div class="mode-filter">
                     <span class="mode-filter-title">Modes:</span>
                     <div class="mode-filter-grid">
                         <label><input type="checkbox" id="modeFilter-bars" checked> Bars</label>
@@ -111,6 +112,7 @@
                     <div class="mode-filter-actions">
                         <button id="modeFilterAll" class="viz-action-btn" title="Enable all modes">All</button>
                         <button id="modeFilterNone" class="viz-action-btn" title="Disable all modes">None</button>
+                    </div>
                     </div>
                 </div>
                 <div class="viz-actions">
@@ -149,14 +151,15 @@
                         Every
                         <input type="number" id="fullscreenAutoCycleInterval" min="2" max="60" step="1" value="10" style="width:64px;"> s
                     </label>
-                    <label>
-                        Cycle:
-                        <select id="fullscreenCycleMode">
-                            <option value="random">Random</option>
-                            <option value="ordered">In order</option>
-                        </select>
-                    </label>
-                    <div class="mode-filter">
+                    <div id="fullscreenCycleOptions" style="display:none;">
+                        <label>
+                            Cycle:
+                            <select id="fullscreenCycleMode">
+                                <option value="random">Random</option>
+                                <option value="ordered">In order</option>
+                            </select>
+                        </label>
+                        <div class="mode-filter">
                         <span class="mode-filter-title">Modes:</span>
                         <div class="mode-filter-grid">
                             <label><input type="checkbox" id="fullscreenModeFilter-bars" checked> Bars</label>
@@ -173,6 +176,7 @@
                         <div class="mode-filter-actions">
                             <button id="fullscreenModeFilterAll" class="viz-action-btn" title="Enable all modes">All</button>
                             <button id="fullscreenModeFilterNone" class="viz-action-btn" title="Disable all modes">None</button>
+                        </div>
                         </div>
                     </div>
                     <div class="viz-actions">
