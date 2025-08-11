@@ -92,7 +92,7 @@ class AudioVisualizer {
     // Cycle order and filters
     this.cycleModeSelect = document.getElementById('cycleMode');
     this.fullscreenCycleModeSelect = document.getElementById('fullscreenCycleMode');
-    this.availableModes = ['bars','wave','circle','spiral','particles','dualBars','radialBars','spectrogram','lissajous','tunnel','webgpu','webgpuFlow','webgpuGrid'];
+    this.availableModes = ['bars','wave','circle','spiral','particles','dualBars','radialBars','spectrogram','lissajous','tunnel','webgpu','webgpuFlow','webgpuGrid','webgpuCenter'];
     this.modeFilter = new Set(this.availableModes); // included modes
     // checkbox elements map
     this.modeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`modeFilter-${id}`)).filter(Boolean);
@@ -276,7 +276,7 @@ class AudioVisualizer {
     }
 
     toggleWebGPUVisibility() {
-        const isGpu = this.vizType === 'webgpu' || this.vizType === 'webgpuFlow' || this.vizType === 'webgpuGrid';
+        const isGpu = this.vizType === 'webgpu' || this.vizType === 'webgpuFlow' || this.vizType === 'webgpuGrid' || this.vizType === 'webgpuCenter';
         if (this.webgpuCanvas) this.webgpuCanvas.style.display = isGpu ? '' : 'none';
         if (this.canvas) this.canvas.style.display = isGpu ? 'none' : '';
         if (this.fullscreenWebgpuCanvas) this.fullscreenWebgpuCanvas.style.display = (isGpu && this.isFullscreen) ? '' : 'none';
@@ -456,7 +456,7 @@ class AudioVisualizer {
             var uv = uvIn;
             uv.x *= u.aspect;
             let r = length(uv);
-            let mode = u.mode; // 0: ring, 1: flow, 2: grid
+            let mode = u.mode; // 0: ring, 1: flow, 2: grid, 3: center flow
             var col = vec3f(0.0,0.0,0.0);
             if (mode < 0.5) {
                 // Neon Ring
@@ -474,7 +474,7 @@ class AudioVisualizer {
                 let v = sin(a*b + r*6.0 + u.amp*8.0);
                 let hue = fract(0.5 + v*0.2 + u.time*0.02);
                 col = neonColor(hue) * (0.4 + 0.6 * smoothstep(0.2,1.0,abs(v)));
-            } else {
+            } else if (mode < 2.5) {
                 // Pulsing Grid
                 var p = uv * 10.0;
                 let gx = abs(fract(p.x) - 0.5);
@@ -483,6 +483,18 @@ class AudioVisualizer {
                 let pulse = 0.5 + 0.5*sin(u.time*3.0 + r*12.0 + u.amp*20.0);
                 let hue = fract(uv.x*0.3 + uv.y*0.2 + u.time*0.05);
                 col = neonColor(hue) * (g * (0.2 + 0.8*pulse));
+            } else {
+                // Center Flow: concentric radial bands flowing outward from center
+                var p = uv;
+                let ang = atan2(p.y, p.x);
+                let bandFreq = 20.0 + u.amp * 30.0; // number of bands
+                // Move bands outward over time; mod by 1.0 for repeating stripes
+                let flow = fract(r * bandFreq - u.time * (1.2 + u.amp*0.8));
+                // Sharpen band edges and glow
+                let edge = 1.0 - smoothstep(0.45, 0.5, abs(flow - 0.5));
+                let glow = pow(edge, 2.0);
+                let hue = fract(ang / 6.28318 + u.time * 0.05);
+                col = neonColor(hue) * (0.25 + 0.75 * glow);
             }
             return vec4f(col,1.0);
         }
@@ -520,9 +532,10 @@ class AudioVisualizer {
                         amp = (sum / (n*255)) * this.sensitivity;
                 }
         // Choose mode index for shader
-        let modeIdx = 0; // ring
-        if (this.vizType === 'webgpuFlow') modeIdx = 1;
-        else if (this.vizType === 'webgpuGrid') modeIdx = 2;
+    let modeIdx = 0; // ring
+    if (this.vizType === 'webgpuFlow') modeIdx = 1;
+    else if (this.vizType === 'webgpuGrid') modeIdx = 2;
+    else if (this.vizType === 'webgpuCenter') modeIdx = 3;
                 if (currentCtxIsFullscreen) {
                         const aspect = this.fullscreenWebgpuCanvas.width / Math.max(1, this.fullscreenWebgpuCanvas.height);
             const data = new Float32Array([t, amp, aspect, modeIdx]);
@@ -816,6 +829,7 @@ class AudioVisualizer {
             case 'webgpu':
             case 'webgpuFlow':
             case 'webgpuGrid':
+            case 'webgpuCenter':
                 // Ensure WebGPU is ready then render
                 this.drawWebGPU(this.isFullscreen);
                 break;
@@ -858,6 +872,7 @@ class AudioVisualizer {
             case 'webgpu':
             case 'webgpuFlow':
             case 'webgpuGrid':
+            case 'webgpuCenter':
                 fft = 512; smooth = 0.8; sens = 1.1; particles = false; 
                 // Lazy-init WebGPU and fallback to bars if unsupported
                 this.ensureWebGPU().then((ok)=>{ 
