@@ -62,22 +62,7 @@
             <div class="visualizer-controls">
                 <label>
                     Visualization:
-                    <select id="vizType">
-                        <option value="bars">Frequency Bars</option>
-                        <option value="wave">Waveform</option>
-                        <option value="circle">Circular</option>
-                        <option value="spiral">Spiral</option>
-                        <option value="particles">Particles</option>
-                        <option value="dualBars">Mirrored Bars</option>
-                        <option value="radialBars">Radial Bars</option>
-                        <option value="spectrogram">Spectrogram</option>
-                        <option value="lissajous">Lissajous</option>
-                        <option value="tunnel">Tunnel Grid</option>
-                        <option value="webgpu">WebGPU Neon Ring</option>
-                        <option value="webgpuFlow">WebGPU Flow Field</option>
-                        <option value="webgpuGrid">WebGPU Pulsing Grid</option>
-                        <option value="webgpuCenter">WebGPU Center Flow</option>
-                    </select>
+                    <select id="vizType"></select>
                 </label>
                 <label>
                     <input type="checkbox" id="showParticles" checked> Particles
@@ -103,22 +88,7 @@
                     </label>
                     <div class="mode-filter">
                     <span class="mode-filter-title">Modes:</span>
-                    <div class="mode-filter-grid">
-                        <label><input type="checkbox" id="modeFilter-bars" checked> Bars</label>
-                        <label><input type="checkbox" id="modeFilter-wave" checked> Wave</label>
-                        <label><input type="checkbox" id="modeFilter-circle" checked> Circle</label>
-                        <label><input type="checkbox" id="modeFilter-spiral" checked> Spiral</label>
-                        <label><input type="checkbox" id="modeFilter-particles" checked> Particles</label>
-                        <label><input type="checkbox" id="modeFilter-dualBars" checked> Mirrored Bars</label>
-                        <label><input type="checkbox" id="modeFilter-radialBars" checked> Radial Bars</label>
-                        <label><input type="checkbox" id="modeFilter-spectrogram" checked> Spectrogram</label>
-                        <label><input type="checkbox" id="modeFilter-lissajous" checked> Lissajous</label>
-                        <label><input type="checkbox" id="modeFilter-tunnel" checked> Tunnel</label>
-                        <label><input type="checkbox" id="modeFilter-webgpu" checked> WebGPU Neon Ring</label>
-                        <label><input type="checkbox" id="modeFilter-webgpuFlow" checked> WebGPU Flow Field</label>
-                        <label><input type="checkbox" id="modeFilter-webgpuGrid" checked> WebGPU Pulsing Grid</label>
-                        <label><input type="checkbox" id="modeFilter-webgpuCenter" checked> WebGPU Center Flow</label>
-                    </div>
+                    <div id="modeFilterGrid" class="mode-filter-grid"></div>
                     <div class="mode-filter-actions">
                         <button id="modeFilterAll" class="viz-action-btn" title="Enable all modes">All</button>
                         <button id="modeFilterNone" class="viz-action-btn" title="Disable all modes">None</button>
@@ -140,22 +110,7 @@
             <div class="fullscreen-controls">
                 <button class="exit-fullscreen-btn" id="exitFullscreenBtn">✕ Exit Fullscreen</button>
                 <div class="fullscreen-viz-controls">
-                    <select id="fullscreenVizType">
-                        <option value="bars">Frequency Bars</option>
-                        <option value="wave">Waveform</option>
-                        <option value="circle">Circular</option>
-                        <option value="spiral">Spiral</option>
-                        <option value="particles">Particles</option>
-                        <option value="dualBars">Mirrored Bars</option>
-                        <option value="radialBars">Radial Bars</option>
-                        <option value="spectrogram">Spectrogram</option>
-                        <option value="lissajous">Lissajous</option>
-                        <option value="tunnel">Tunnel Grid</option>
-                        <option value="webgpu">WebGPU Neon Ring</option>
-                        <option value="webgpuFlow">WebGPU Flow Field</option>
-                        <option value="webgpuGrid">WebGPU Pulsing Grid</option>
-                        <option value="webgpuCenter">WebGPU Center Flow</option>
-                    </select>
+                    <select id="fullscreenVizType"></select>
                     <label>
                         <input type="checkbox" id="fullscreenShowParticles" checked> Particles
                     </label>
@@ -177,22 +132,7 @@
                         </label>
                         <div class="mode-filter">
                         <span class="mode-filter-title">Modes:</span>
-                        <div class="mode-filter-grid">
-                            <label><input type="checkbox" id="fullscreenModeFilter-bars" checked> Bars</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-wave" checked> Wave</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-circle" checked> Circle</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-spiral" checked> Spiral</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-particles" checked> Particles</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-dualBars" checked> Mirrored Bars</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-radialBars" checked> Radial Bars</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-spectrogram" checked> Spectrogram</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-lissajous" checked> Lissajous</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-tunnel" checked> Tunnel</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-webgpu" checked> WebGPU Neon Ring</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-webgpuFlow" checked> WebGPU Flow Field</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-webgpuGrid" checked> WebGPU Pulsing Grid</label>
-                            <label><input type="checkbox" id="fullscreenModeFilter-webgpuCenter" checked> WebGPU Center Flow</label>
-                        </div>
+                        <div id="fullscreenModeFilterGrid" class="mode-filter-grid"></div>
                         <div class="mode-filter-actions">
                             <button id="fullscreenModeFilterAll" class="viz-action-btn" title="Enable all modes">All</button>
                             <button id="fullscreenModeFilterNone" class="viz-action-btn" title="Disable all modes">None</button>

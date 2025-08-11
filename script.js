@@ -35,12 +35,33 @@ class AudioVisualizer {
         this.showParticles = true;
         this.sensitivity = 1;
         
+        // Define visualization config (single source of truth)
+        this.vizConfig = [
+            { id: 'bars', label: 'Frequency Bars', isGpu: false },
+            { id: 'wave', label: 'Waveform', isGpu: false },
+            { id: 'circle', label: 'Circular', isGpu: false },
+            { id: 'spiral', label: 'Spiral', isGpu: false },
+            { id: 'particles', label: 'Particles', isGpu: false },
+            { id: 'dualBars', label: 'Mirrored Bars', isGpu: false },
+            { id: 'radialBars', label: 'Radial Bars', isGpu: false },
+            { id: 'spectrogram', label: 'Spectrogram', isGpu: false },
+            { id: 'lissajous', label: 'Lissajous', isGpu: false },
+            { id: 'tunnel', label: 'Tunnel Grid', isGpu: false },
+            { id: 'webgpu', label: 'WebGPU Neon Ring', isGpu: true },
+            { id: 'webgpuFlow', label: 'WebGPU Flow Field', isGpu: true },
+            { id: 'webgpuGrid', label: 'WebGPU Pulsing Grid', isGpu: true },
+            { id: 'webgpuCenter', label: 'WebGPU Center Flow', isGpu: true }
+        ];
+
         this.initializeElements();
         this.setupEventListeners();
         this.setupCanvas();
         this.initializeParticles();
-    // Load persisted settings if available, then sync UI
+    // Load persisted settings if available, apply defaults, then sync UI
     this.loadSettings();
+    // Ensure current vizType is valid; fallback if needed
+    if (!this.availableModes.includes(this.vizType)) this.vizType = 'bars';
+    this.applyVizDefaults();
     this.syncUiControls();
     // Spectrogram rendering settings
     this.spectrogramRowHeight = 2;
@@ -49,7 +70,7 @@ class AudioVisualizer {
     }
 
     initializeElements() {
-        this.dropZone = document.getElementById('dropZone');
+    this.dropZone = document.getElementById('dropZone');
         this.fileInput = document.getElementById('fileInput');
         this.playerControls = document.getElementById('playerControls');
         this.playPauseBtn = document.getElementById('playPauseBtn');
@@ -62,9 +83,9 @@ class AudioVisualizer {
         this.currentTime = document.getElementById('currentTime');
         this.duration = document.getElementById('duration');
         this.selectFileBtn = document.getElementById('selectFileBtn');
-        this.playlist = document.getElementById('playlist');
-        this.playlistItems = document.getElementById('playlistItems');
-        this.vizTypeSelect = document.getElementById('vizType');
+    this.playlistContainer = document.getElementById('playlist');
+    this.playlistItems = document.getElementById('playlistItems');
+    this.vizTypeSelect = document.getElementById('vizType');
         this.showParticlesCheckbox = document.getElementById('showParticles');
         this.sensitivitySlider = document.getElementById('sensitivity');
         
@@ -72,7 +93,7 @@ class AudioVisualizer {
     this.fullscreenBtn = document.getElementById('fullscreenBtn');
         this.fullscreenVisualizer = document.getElementById('fullscreenVisualizer');
         this.exitFullscreenBtn = document.getElementById('exitFullscreenBtn');
-        this.fullscreenVizType = document.getElementById('fullscreenVizType');
+    this.fullscreenVizType = document.getElementById('fullscreenVizType');
         this.fullscreenShowParticles = document.getElementById('fullscreenShowParticles');
         this.fullscreenSensitivity = document.getElementById('fullscreenSensitivity');
     // Action buttons
@@ -92,11 +113,50 @@ class AudioVisualizer {
     // Cycle order and filters
     this.cycleModeSelect = document.getElementById('cycleMode');
     this.fullscreenCycleModeSelect = document.getElementById('fullscreenCycleMode');
-    this.availableModes = ['bars','wave','circle','spiral','particles','dualBars','radialBars','spectrogram','lissajous','tunnel','webgpu','webgpuFlow','webgpuGrid','webgpuCenter'];
-    this.modeFilter = new Set(this.availableModes); // included modes
-    // checkbox elements map
-    this.modeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`modeFilter-${id}`)).filter(Boolean);
-    this.fullscreenModeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`fullscreenModeFilter-${id}`)).filter(Boolean);
+    this.availableModes = this.vizConfig.map(v => v.id);
+    this.modeFilter = new Set(this.availableModes);
+    // Dynamically build selects and filter grids
+    this.buildVizControls();
+    }
+
+    buildVizControls() {
+        // Populate main and fullscreen selects
+        const fillSelect = (sel) => {
+            if (!sel) return;
+            sel.innerHTML = '';
+            this.vizConfig.forEach(v => {
+                const opt = document.createElement('option');
+                opt.value = v.id;
+                opt.textContent = v.label;
+                sel.appendChild(opt);
+            });
+        };
+        fillSelect(this.vizTypeSelect);
+        fillSelect(this.fullscreenVizType);
+        // Populate filter checkbox grids
+        const mainGrid = document.getElementById('modeFilterGrid');
+        const fsGrid = document.getElementById('fullscreenModeFilterGrid');
+        const makeCb = (prefix, v) => {
+            const label = document.createElement('label');
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.id = `${prefix}-${v.id}`;
+            cb.checked = true;
+            label.appendChild(cb);
+            label.appendChild(document.createTextNode(` ${v.label}`));
+            return label;
+        };
+        if (mainGrid) {
+            mainGrid.innerHTML = '';
+            this.vizConfig.forEach(v => mainGrid.appendChild(makeCb('modeFilter', v)));
+        }
+        if (fsGrid) {
+            fsGrid.innerHTML = '';
+            this.vizConfig.forEach(v => fsGrid.appendChild(makeCb('fullscreenModeFilter', v)));
+        }
+        // Collect checkbox NodeLists after building
+        this.modeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`modeFilter-${id}`)).filter(Boolean);
+        this.fullscreenModeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`fullscreenModeFilter-${id}`)).filter(Boolean);
     }
 
     setupEventListeners() {
@@ -186,6 +246,8 @@ class AudioVisualizer {
         const noneBtn = document.getElementById('modeFilterNone');
     if (allBtn) allBtn.addEventListener('click', () => { this.setModeFilterAll(true); this.saveSettings(); });
     if (noneBtn) noneBtn.addEventListener('click', () => { this.setModeFilterAll(false); this.saveSettings(); });
+    // re-query in case buildVizControls ran after constructor properties were set
+    this.modeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`modeFilter-${id}`)).filter(Boolean);
     this.modeFilterCheckboxes.forEach(cb => cb.addEventListener('change', () => { this.onModeFilterChanged('main'); this.saveSettings(); }));
 
         // Fullscreen controls
@@ -255,6 +317,7 @@ class AudioVisualizer {
         const fsNone = document.getElementById('fullscreenModeFilterNone');
     if (fsAll) fsAll.addEventListener('click', () => { this.setModeFilterAll(true); this.saveSettings(); });
     if (fsNone) fsNone.addEventListener('click', () => { this.setModeFilterAll(false); this.saveSettings(); });
+    this.fullscreenModeFilterCheckboxes = this.availableModes.map(id => document.getElementById(`fullscreenModeFilter-${id}`)).filter(Boolean);
     this.fullscreenModeFilterCheckboxes.forEach(cb => cb.addEventListener('change', () => { this.onModeFilterChanged('fs'); this.saveSettings(); }));
 
         // Keyboard shortcuts for fullscreen
@@ -613,10 +676,10 @@ class AudioVisualizer {
             index
         }));
 
-        this.renderPlaylist();
-        this.loadTrack(0);
-        this.playerControls.style.display = 'block';
-        this.playlist.style.display = 'block';
+    this.renderPlaylist();
+    this.loadTrack(0);
+    this.playerControls.style.display = 'block';
+    this.playlistContainer.style.display = 'block';
         this.dropZone.style.display = 'none';
         // Auto-play the first track on user file selection/drop
         if (autoPlay) {
@@ -980,13 +1043,13 @@ class AudioVisualizer {
             this.fullscreenCycleModeSelect.value = val;
         }
         // filters
-        if (this.modeFilter && this.modeFilterCheckboxes.length) {
+    if (this.modeFilter && this.modeFilterCheckboxes && this.modeFilterCheckboxes.length) {
             this.modeFilterCheckboxes.forEach(cb => {
                 const id = cb.id.replace('modeFilter-','');
                 cb.checked = this.modeFilter.has(id);
             });
         }
-        if (this.fullscreenModeFilterCheckboxes.length) {
+    if (this.fullscreenModeFilterCheckboxes && this.fullscreenModeFilterCheckboxes.length) {
             this.fullscreenModeFilterCheckboxes.forEach(cb => {
                 const id = cb.id.replace('fullscreenModeFilter-','');
                 cb.checked = this.modeFilter.has(id);
