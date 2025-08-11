@@ -248,16 +248,19 @@ class AudioVisualizer {
     }
 
     onModeFilterChanged(source) {
-        // sync sets from whichever changed
-        const readCbs = () => {
-            const set = new Set();
-            this.modeFilterCheckboxes.forEach(cb => { if (cb.checked) set.add(cb.id.replace('modeFilter-','')); });
-            return set;
-        };
-        this.modeFilter = readCbs();
-        // mirror to fullscreen
-        this.fullscreenModeFilterCheckboxes.forEach(cb => {
-            const id = cb.id.replace('fullscreenModeFilter-','');
+        // Determine which set of checkboxes changed
+        const readFrom = source === 'fs' ? this.fullscreenModeFilterCheckboxes : this.modeFilterCheckboxes;
+        const writeTo = source === 'fs' ? this.modeFilterCheckboxes : this.fullscreenModeFilterCheckboxes;
+
+        const newSet = new Set();
+        readFrom.forEach(cb => {
+            const id = cb.id.replace(source === 'fs' ? 'fullscreenModeFilter-' : 'modeFilter-','');
+            if (cb.checked) newSet.add(id);
+        });
+        this.modeFilter = newSet;
+        // Mirror state to the other UI's checkboxes
+        writeTo.forEach(cb => {
+            const id = cb.id.replace(source === 'fs' ? 'modeFilter-' : 'fullscreenModeFilter-','');
             cb.checked = this.modeFilter.has(id);
         });
         // ensure at least one remains
@@ -697,7 +700,9 @@ class AudioVisualizer {
                 this.setRandomMode();
             }
         };
-        this.autoCycleTimer = setInterval(tick, this.autoCycleSeconds * 1000);
+    // Run immediately so users see it working right away
+    tick();
+    this.autoCycleTimer = setInterval(tick, this.autoCycleSeconds * 1000);
         this.syncUiControls();
     }
 
