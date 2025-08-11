@@ -13,6 +13,7 @@ class AudioVisualizer {
         this.animationId = null;
         this.particles = [];
         this.isFullscreen = false;
+    this.spectrogramOffset = 0; // for spectrogram vertical scrolling
         
         // Visualization settings
         this.vizType = 'bars';
@@ -380,9 +381,9 @@ class AudioVisualizer {
         
         if (!this.analyser) return;
         
-        const bufferLength = this.analyser.frequencyBinCount;
-        const dataArray = new Uint8Array(bufferLength);
-        this.analyser.getByteFrequencyData(dataArray);
+    const bufferLength = this.analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+    this.analyser.getByteFrequencyData(dataArray);
         
         // Use the appropriate canvas and context
         const currentCanvas = this.isFullscreen ? this.fullscreenCanvas : this.canvas;
@@ -405,6 +406,21 @@ class AudioVisualizer {
                 break;
             case 'particles':
                 this.drawParticleVisualization(dataArray, currentCtx, currentCanvas);
+                break;
+            case 'dualBars':
+                this.drawDualBars(dataArray, currentCtx, currentCanvas);
+                break;
+            case 'radialBars':
+                this.drawRadialBars(dataArray, currentCtx, currentCanvas);
+                break;
+            case 'spectrogram':
+                this.drawSpectrogram(currentCtx, currentCanvas);
+                break;
+            case 'lissajous':
+                this.drawLissajous(currentCtx, currentCanvas);
+                break;
+            case 'tunnel':
+                this.drawTunnel(dataArray, currentCtx, currentCanvas);
                 break;
         }
         
@@ -480,6 +496,147 @@ class AudioVisualizer {
         ctx.shadowBlur = 20;
         ctx.stroke();
         ctx.shadowBlur = 0;
+    }
+
+    drawDualBars(dataArray, ctx, canvas) {
+        ctx = ctx || this.ctx;
+        canvas = canvas || this.canvas;
+        const barWidth = (canvas.width / dataArray.length) * 2.2;
+        let x = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+            const value = dataArray[i] / 255;
+            const barHeight = value * canvas.height * 0.45 * this.sensitivity;
+            const hue = (i / dataArray.length) * 360;
+            ctx.fillStyle = `hsl(${hue}, 100%, 50%)`;
+
+            // Top half mirrored
+            ctx.fillRect(x, (canvas.height / 2) - barHeight, barWidth, barHeight);
+            // Bottom half
+            ctx.fillRect(x, canvas.height / 2, barWidth, barHeight);
+
+            // Glow
+            ctx.shadowColor = `hsl(${hue}, 100%, 50%)`;
+            ctx.shadowBlur = 12;
+            ctx.fillRect(x, (canvas.height / 2) - barHeight, barWidth, barHeight);
+            ctx.fillRect(x, canvas.height / 2, barWidth, barHeight);
+            ctx.shadowBlur = 0;
+            x += barWidth + 1;
+        }
+        // Center line
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.beginPath();
+        ctx.moveTo(0, canvas.height / 2);
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
+    }
+
+    drawRadialBars(dataArray, ctx, canvas) {
+        ctx = ctx || this.ctx;
+        canvas = canvas || this.canvas;
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const baseR = Math.min(cx, cy) * 0.3;
+        const maxExtra = Math.min(cx, cy) * 0.6;
+        for (let i = 0; i < dataArray.length; i++) {
+            const angle = (i / dataArray.length) * Math.PI * 2;
+            const amp = (dataArray[i] / 255) * maxExtra * this.sensitivity;
+            const r1 = baseR;
+            const r2 = baseR + amp;
+            const x1 = cx + Math.cos(angle) * r1;
+            const y1 = cy + Math.sin(angle) * r1;
+            const x2 = cx + Math.cos(angle) * r2;
+            const y2 = cy + Math.sin(angle) * r2;
+            const hue = (i / dataArray.length) * 360;
+            ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        // center pulse
+        const avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length/255;
+        ctx.fillStyle = `rgba(0,255,65,${0.2+avg*0.5})`;
+        ctx.beginPath();
+        ctx.arc(cx, cy, baseR*0.6 + avg*20, 0, Math.PI*2);
+        ctx.fill();
+    }
+
+    drawSpectrogram(ctx, canvas) {
+        ctx = ctx || this.ctx;
+        canvas = canvas || this.canvas;
+        // Shift the existing image up by 1px to create a scrolling spectrogram
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        ctx.putImageData(imageData, 0, -1);
+
+        // Draw new line at the bottom representing current frequency bins
+        const bufferLength = this.analyser.frequencyBinCount;
+        const freq = new Uint8Array(bufferLength);
+        this.analyser.getByteFrequencyData(freq);
+        for (let x = 0; x < canvas.width; x++) {
+            const idx = Math.floor((x / canvas.width) * bufferLength);
+            const v = freq[idx] / 255;
+            const hue = (idx / bufferLength) * 360;
+            ctx.fillStyle = `hsl(${hue}, 100%, ${30 + v * 50}%)`;
+            ctx.fillRect(x, canvas.height - 1, 1, 1);
+        }
+        // Optional glow overlay
+        ctx.globalAlpha = 0.05;
+        ctx.fillStyle = '#000428';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalAlpha = 1;
+    }
+
+    drawLissajous(ctx, canvas) {
+        ctx = ctx || this.ctx;
+        canvas = canvas || this.canvas;
+        // Use time-domain data for X, and a slightly delayed slice for Y
+        const bufferLength = this.analyser.fftSize;
+        const time = new Uint8Array(bufferLength);
+        this.analyser.getByteTimeDomainData(time);
+        const delay = Math.floor(bufferLength * 0.25);
+        ctx.strokeStyle = 'rgba(0,255,255,0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < bufferLength - delay; i++) {
+            const tx = (time[i] - 128) / 128; // -1..1
+            const ty = (time[i + delay] - 128) / 128; // -1..1
+            const x = canvas.width * (0.5 + tx * 0.45);
+            const y = canvas.height * (0.5 + ty * 0.45);
+            if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+        // glow
+        ctx.shadowColor = 'cyan';
+        ctx.shadowBlur = 12;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+    }
+
+    drawTunnel(dataArray, ctx, canvas) {
+        ctx = ctx || this.ctx;
+        canvas = canvas || this.canvas;
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const layers = 20;
+        const avg = dataArray.reduce((a,b)=>a+b,0)/dataArray.length/255;
+        for (let i = 0; i < layers; i++) {
+            const t = i / layers;
+            const size = (1 - t) * Math.min(cx, cy);
+            const wobble = Math.sin((performance.now()/400 + i) + avg*10) * 10 * this.sensitivity;
+            const hue = (t * 360 + performance.now()/50) % 360;
+            ctx.strokeStyle = `hsla(${hue},100%,60%,${0.6 - t*0.5})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let a = 0; a <= Math.PI * 2; a += Math.PI / 24) {
+                const r = size + Math.sin(a * 6 + i) * (5 + avg * 30) + wobble;
+                const x = cx + Math.cos(a) * r;
+                const y = cy + Math.sin(a) * r;
+                if (a === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.stroke();
+        }
     }
 
     drawCircularVisualization(dataArray, ctx, canvas) {
